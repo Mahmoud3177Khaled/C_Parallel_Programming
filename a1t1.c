@@ -44,6 +44,17 @@ void main(int argc, char** argv) {
         // distribute array size and partitions to slaves - master
         printf("partition size is %d\n\n", partition_size);
         for (int i = 1; i < p; i++) {  // p-1 as master wont get a partition
+
+            if(i == p-1) {
+                int old_partition_size = partition_size;
+                partition_size += (full_arr_size % (p-1));
+
+                MPI_Send(&full_arr_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+                MPI_Send(&partition_size, 1, MPI_INT, i, 1, MPI_COMM_WORLD);
+                MPI_Send(&full_arr[(i-1) * old_partition_size], partition_size, MPI_INT, i, 2, MPI_COMM_WORLD);
+                break;    
+            }
+
             MPI_Send(&full_arr_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
             MPI_Send(&partition_size, 1, MPI_INT, i, 1, MPI_COMM_WORLD);
             MPI_Send(&full_arr[(i-1) * partition_size], partition_size, MPI_INT, i, 2, MPI_COMM_WORLD);
@@ -94,7 +105,7 @@ void main(int argc, char** argv) {
         printf("Hello from slave#%d Max number in my partition is %d and index is %d\n.", my_rank, max_on_this_proc, max_index_on_this_proc);
 
         // get the max index in the whole array not just in the partition - slaves
-        max_index_on_this_proc += ((my_rank-1)*partition_size);
+        max_index_on_this_proc += ((my_rank-1)*(partition_size-(full_arr_size % (p-1))));
 
         // send max and its index in the full array back to master to be comapaired with others - slaves
         MPI_Send(&max_on_this_proc, 1, MPI_INT, 0, 3, MPI_COMM_WORLD);
