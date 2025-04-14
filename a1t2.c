@@ -13,6 +13,7 @@ void main(int argc, char** argv) {
     // problem variables
     int full_str_size = 0;
     int partition_size = 0;
+    int mode = 0;
     // int max_index_on_this_proc = -999999;
     // int max_on_this_proc = -999999;
 
@@ -38,13 +39,16 @@ void main(int argc, char** argv) {
         // read string elements - master
         printf("Please enter the string: \n");
         scanf("%s", full_str);
+
+        printf("Please select mode: \n1. Encrypt\n2. Decrypt\n");
+        scanf("%d", &mode);
         
         full_str_size = strlen(full_str)+1;
-        partition_size = (full_str_size/(p-1)); // master wont get a partition
+        partition_size = (full_str_size/(p-1)); // p-1 as master wont get a partition
 
         // distribute string size and partitions to slaves - master
         printf("partition size is %d\n\n", partition_size);
-        for (int i = 1; i < p; i++) {  // p-1 as master wont get a partition
+        for (int i = 1; i < p; i++) {  
 
             if(i == p-1) {
                 int old_partition_size = partition_size;
@@ -56,12 +60,16 @@ void main(int argc, char** argv) {
                 MPI_Send(&partition_size, 1, MPI_INT, i, 1, MPI_COMM_WORLD);
                 MPI_Send(&full_str[(i-1) * old_partition_size], partition_size, MPI_CHAR, i, 2, MPI_COMM_WORLD);
                 partition_size = old_partition_size;
+
+                MPI_Send(&mode, 1, MPI_INT, i, 4, MPI_COMM_WORLD);
                 break;    
             }
 
             MPI_Send(&full_str_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
             MPI_Send(&partition_size, 1, MPI_INT, i, 1, MPI_COMM_WORLD);
             MPI_Send(&full_str[(i-1) * partition_size], partition_size, MPI_CHAR, i, 2, MPI_COMM_WORLD);
+
+            MPI_Send(&mode, 1, MPI_INT, i, 4, MPI_COMM_WORLD);
         }
 
         // ------------------------------ after slaves processing ---------------------------------------
@@ -87,19 +95,38 @@ void main(int argc, char** argv) {
         MPI_Recv(&partition_size, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, &status);
 
         // recive the string partition elements - slaves
-        char my_str[partition_size];
-        char my_str_enc[partition_size];
+        char my_str[partition_size+1];
+        char my_str_enc[partition_size+1];
         MPI_Recv(my_str, partition_size, MPI_CHAR, 0, 2, MPI_COMM_WORLD, &status);
 
-        // encrypt the partition - slaves
-        for (int i = 0; i < partition_size; i++) {
-            if(my_str[i] == '\0') {
-                my_str_enc[i] = my_str[i];
-                break;
+        MPI_Recv(&mode, 1, MPI_INT, 0, 4, MPI_COMM_WORLD, &status);
+
+        if(mode == 1) {
+            // encrypt the partition - slaves
+            for (int i = 0; i < partition_size; i++) {
+                if(my_str[i] == '\0') {
+                    my_str_enc[i] = my_str[i];
+                    break;
+                }
+    
+                my_str_enc[i] = my_str[i] + 3;
             }
 
-            my_str_enc[i] = my_str[i] + 3;
+        } else {
+            // decrypt the partition - slaves
+            for (int i = 0; i < partition_size; i++) {
+                if(my_str[i] == '\0') {
+                    my_str_enc[i] = my_str[i];
+                    break;
+                }
+    
+                my_str_enc[i] = my_str[i] - 3;
+            }
+
         }
+
+        my_str[partition_size] = '\0';
+        my_str_enc[partition_size] = '\0';
         
         printf("Hello from slave#%d, i encrypted %s to %s\n.", my_rank, my_str+'\0', my_str_enc+'\0');
 
