@@ -14,10 +14,6 @@ void main(int argc, char** argv) {
     int full_str_size = 0;
     int partition_size = 0;
     int mode = 0;
-    // int max_index_on_this_proc = -999999;
-    // int max_on_this_proc = -999999;
-
-
 
     MPI_Init(&argc, &argv);
 
@@ -35,19 +31,21 @@ void main(int argc, char** argv) {
         char full_str[full_str_size];
         char full_str_enc[full_str_size];
 
+        getchar();
         
         // read string elements - master
         printf("Please enter the string: \n");
-        scanf("%s", full_str);
+        // scanf("%s", full_str);
+        fgets(full_str, sizeof(full_str), stdin);
 
-        printf("Please select mode: \n1. Encrypt\n2. Decrypt\n");
+        printf("Please select mode: \n1. Encrypt\n2. Decrypt\n\n");
         scanf("%d", &mode);
         
         full_str_size = strlen(full_str)+1;
         partition_size = (full_str_size/(p-1)); // p-1 as master wont get a partition
 
         // distribute string size and partitions to slaves - master
-        printf("partition size is %d\n\n", partition_size);
+        // printf("partition size is %d\n\n", partition_size);
         for (int i = 1; i < p; i++) {  
 
             if(i == p-1) {
@@ -101,6 +99,8 @@ void main(int argc, char** argv) {
 
         MPI_Recv(&mode, 1, MPI_INT, 0, 4, MPI_COMM_WORLD, &status);
 
+        my_str[strcspn(my_str, "\n")] = '\0';
+
         if(mode == 1) {
             // encrypt the partition - slaves
             for (int i = 0; i < partition_size; i++) {
@@ -127,15 +127,13 @@ void main(int argc, char** argv) {
 
         my_str[partition_size] = '\0';
         my_str_enc[partition_size] = '\0';
-        
-        printf("Hello from slave#%d, i encrypted %s to %s\n.", my_rank, my_str+'\0', my_str_enc+'\0');
+
+        printf("Hello from slave#%d, i turned '%s' into '%s'\n.", my_rank, my_str, my_str_enc);
 
         // send encrypted string back to master to be combined with others - slaves
         MPI_Send(&my_str_enc, partition_size, MPI_CHAR, 0, 3, MPI_COMM_WORLD);
     }
 
     MPI_Finalize();
-
-
 
 }
