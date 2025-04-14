@@ -25,38 +25,41 @@ void main(int argc, char** argv) {
         printf("\nHello from master process!\n\n");
         printf("Number of slave processes is %d\n\n", p-1);
 
-        // read string size - master
-        printf("Please enter size of string: \n");
-        scanf("%d", &full_str_size);
-        char full_str[full_str_size];
-        char full_str_enc[full_str_size];
-
-        getchar();
-        
-        // read string elements - master
-        printf("Please enter the string: \n");
-        // scanf("%s", full_str);
-        fgets(full_str, sizeof(full_str), stdin);
+        char full_str[100];
+        char full_str_enc[100];
 
         printf("Please select mode: \n1. Encrypt\n2. Decrypt\n\n");
         scanf("%d", &mode);
         
+        // flush \n from scanf to not ruin fgets
+        getchar();
+
+        // read string elements - master
+        printf("Please enter the string: \n");
+
+        fgets(full_str, sizeof(full_str), stdin);
+        printf("\n");
+
+        // plus one because i wanna the \0 to be preserved in partitioning
         full_str_size = strlen(full_str)+1;
         partition_size = (full_str_size/(p-1)); // p-1 as master wont get a partition
 
         // distribute string size and partitions to slaves - master
-        // printf("partition size is %d\n\n", partition_size);
         for (int i = 1; i < p; i++) {  
 
             if(i == p-1) {
+
+                // last process gets the normal partition size + all thats left ... remainder 
                 int old_partition_size = partition_size;
                 partition_size += (full_str_size % (p-1));
 
-                printf("%d ||| %d", old_partition_size, partition_size);
+                printf("Partitions (all | last): %d | %d", old_partition_size, partition_size-2);
 
                 MPI_Send(&full_str_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
                 MPI_Send(&partition_size, 1, MPI_INT, i, 1, MPI_COMM_WORLD);
                 MPI_Send(&full_str[(i-1) * old_partition_size], partition_size, MPI_CHAR, i, 2, MPI_COMM_WORLD);
+
+                // return partition size to normal for next calculations
                 partition_size = old_partition_size;
 
                 MPI_Send(&mode, 1, MPI_INT, i, 4, MPI_COMM_WORLD);
@@ -75,10 +78,14 @@ void main(int argc, char** argv) {
 
         // recive substrings from slaves - master
         for (int i = 1; i < p; i++) {
+
             if(i == p-1) {
+                //if last, we take add remander to partition size as it might be bigger than normal partitions
                 MPI_Recv(&full_str_enc[(i-1) * partition_size], partition_size+(full_str_size % (p-1)), MPI_CHAR, i, 3, MPI_COMM_WORLD, &status);
                 break;
             }
+
+            // recieve a normal partition and add it to the full processed string
             MPI_Recv(&full_str_enc[(i-1) * partition_size], partition_size, MPI_CHAR, i, 3, MPI_COMM_WORLD, &status);
         }
 
@@ -93,17 +100,21 @@ void main(int argc, char** argv) {
         MPI_Recv(&partition_size, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, &status);
 
         // recive the string partition elements - slaves
+        // size is partition +1 cause i'll add a \0 to the partition to be printed in slave message correctly
         char my_str[partition_size+1];
         char my_str_enc[partition_size+1];
         MPI_Recv(my_str, partition_size, MPI_CHAR, 0, 2, MPI_COMM_WORLD, &status);
 
+        // recieve mode to encrypt or decrypt
         MPI_Recv(&mode, 1, MPI_INT, 0, 4, MPI_COMM_WORLD, &status);
 
+        //remove the \n captured by fgets if any
         my_str[strcspn(my_str, "\n")] = '\0';
 
         if(mode == 1) {
             // encrypt the partition - slaves
             for (int i = 0; i < partition_size; i++) {
+                // dont encrypt null tereminator
                 if(my_str[i] == '\0') {
                     my_str_enc[i] = my_str[i];
                     break;
@@ -115,6 +126,7 @@ void main(int argc, char** argv) {
         } else {
             // decrypt the partition - slaves
             for (int i = 0; i < partition_size; i++) {
+                // dont decrypt null tereminator
                 if(my_str[i] == '\0') {
                     my_str_enc[i] = my_str[i];
                     break;
@@ -125,6 +137,7 @@ void main(int argc, char** argv) {
 
         }
 
+        // put a \0 after the partition to be printed properly
         my_str[partition_size] = '\0';
         my_str_enc[partition_size] = '\0';
 
