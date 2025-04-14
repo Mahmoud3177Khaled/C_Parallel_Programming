@@ -14,6 +14,7 @@ void main(int argc, char** argv) {
     int full_str_size = 0;
     int partition_size = 0;
     int mode = 0;
+    int read_mode = 0;
 
     MPI_Init(&argc, &argv);
 
@@ -30,14 +31,30 @@ void main(int argc, char** argv) {
 
         printf("Please select mode: \n1. Encrypt\n2. Decrypt\n\n");
         scanf("%d", &mode);
-        
+
+        printf("Please select input mode: \n1. File\n2. Console\n\n");
+        scanf("%d", &read_mode);
+
         // flush \n from scanf to not ruin fgets
         getchar();
+        
+        if(read_mode == 1) {
 
-        // read string elements - master
-        printf("Please enter the string: \n");
+            char file_name[50];
 
-        fgets(full_str, sizeof(full_str), stdin);
+            printf("\nFile name: \n");
+            scanf("%s", &file_name);
+
+            FILE* file = fopen(file_name, "r");
+            fgets(full_str, sizeof(full_str), file);
+            
+        } else {
+            // read string elements - master
+            printf("Please enter the string: \n");
+    
+            fgets(full_str, sizeof(full_str), stdin);
+            
+        }
         printf("\n");
 
         // plus one because i wanna the \0 to be preserved in partitioning
@@ -53,7 +70,7 @@ void main(int argc, char** argv) {
                 int old_partition_size = partition_size;
                 partition_size += (full_str_size % (p-1));
 
-                printf("Partitions (all | last): %d | %d", old_partition_size, partition_size-2);
+                printf("\nPartitions (all | last): %d | %d", old_partition_size, partition_size-2);
 
                 MPI_Send(&full_str_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
                 MPI_Send(&partition_size, 1, MPI_INT, i, 1, MPI_COMM_WORLD);
@@ -89,7 +106,7 @@ void main(int argc, char** argv) {
             MPI_Recv(&full_str_enc[(i-1) * partition_size], partition_size, MPI_CHAR, i, 3, MPI_COMM_WORLD, &status);
         }
 
-        printf("\nMaster process announce the final string is %s\n",  full_str_enc);
+        printf("\nMaster process announce the final string is '%s'\n",  full_str_enc);
         printf("\nThanks for using our program :)\n");
 
 
