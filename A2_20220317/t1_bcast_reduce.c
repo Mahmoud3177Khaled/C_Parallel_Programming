@@ -28,14 +28,14 @@ int main(int argc, char** argv) {
 
         printf("Hello from master process.\n");
 
-        // printf("Enter start x: \n");
-        // scanf("%d", &x);
+        printf("Enter start x: \n");
+        scanf("%d", &x);
         
-        // printf("Enter end y: \n");
-        // scanf("%d", &y);
+        printf("Enter end y: \n");
+        scanf("%d", &y);
 
-        x = 1;
-        y = 10;
+        // x = 1;
+        // y = 10000000;
 
         partition = floor((double)((y-x)+1)/(p-1));
         
