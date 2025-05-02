@@ -1,6 +1,8 @@
 #include<stdio.h>
 #include"mpi.h"
 #include<string.h>
+#include<stdlib.h>
+#include<time.h>
 
 int main(int argc, char** argv) {
 
@@ -31,30 +33,60 @@ int main(int argc, char** argv) {
     // master does:
     if(my_rank == 0) {
 
-        // takes input for matrix A element by element.
-        printf("Enter matrix A of %dx%d: \n", p, p);
-        for (int i = 0; i < p; i++) {
-            // printf("Row%d: ", i);
-            for (int j = 0; j < p; j++) {
-                scanf("%d", &A[i][j]);
+        int input_choice;
+        printf("select input method: \n1. Manual input\n2. Random input\n");
+        scanf("%d", &input_choice);
+
+        if(input_choice == 1) {
+
+            // takes input for matrix A element by element.
+            printf("Enter matrix A of %dx%d: \n", p, p);
+            for (int i = 0; i < p; i++) {
+                // printf("Row%d: ", i);
+                for (int j = 0; j < p; j++) {
+                    scanf("%d", &A[i][j]);
+                }
+            
+            }
+
+            // takes input for matrix B element by element.
+            printf("Enter matrix B of %dx%d: \n", p, p);
+            for (int i = 0; i < p; i++) {
+                // printf("Row%d: ", i);
+                for (int j = 0; j < p; j++) {
+                    scanf("%d", &B[i][j]);
+                }
+                
             }
             
-        }
+        } else {
 
-        // takes input for matrix B element by element.
-        printf("Enter matrix B of %dx%d: \n", p, p);
-        for (int i = 0; i < p; i++) {
-            // printf("Row%d: ", i);
-            for (int j = 0; j < p; j++) {
-                scanf("%d", &B[i][j]);
-            }
+            srand(time(NULL));
+
+            // takes input for matrix A element by element.
+            for (int i = 0; i < p; i++) {
+                // printf("Row%d: ", i);
+                for (int j = 0; j < p; j++) {
+                    A[i][j] = rand() % 10;
+                }
             
-        }
+            }
+    
+            // takes input for matrix B element by element.
+            for (int i = 0; i < p; i++) {
+                // printf("Row%d: ", i);
+                for (int j = 0; j < p; j++) {
+                    B[i][j] = rand() % 10;
+                }
+                
+            }
 
+        }
+        
     }
     
     // everyone does: 
-
+    
     // scattering matrix A's rows on p processes, each getting a row of p elements,
     // and same with B.
     MPI_Scatter(A, p, MPI_INT, rowA, p, MPI_INT, 0, MPI_COMM_WORLD);
