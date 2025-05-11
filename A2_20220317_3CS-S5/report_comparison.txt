@@ -1,0 +1,4 @@
+From time_test_screenshot_1 and 2 we conclude that:
+While MPI_Bcast and MPI_Reduce are collective operations used to make communication more effiecent, their advantage seems to be only visible in highly communicated overhead or large distributed systems.
+But in our example here (prime count from 1 to 10,000,000), local process wise computation is heavy and communicated data is small... so, the variation in execution time between manual Send/Recv loops (27.356s) and Bcast/Reduce (27.656s) was negligible (maybe even a little worse) — nearly 0.3 seconds.
+ This shows that for computationally intensive problems with little communications needed between processes, it matters little whether collective or manual communications are used.
